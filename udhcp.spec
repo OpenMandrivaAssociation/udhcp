@@ -14,7 +14,7 @@
 Summary:	Very small DHCP server/client
 Name:		udhcp
 Version:	0.9.8
-Release:	%mkrel 9
+Release:	%mkrel 10
 License:	GPL
 Group:		System/Servers
 URL:		http://udhcp.busybox.net/
@@ -26,10 +26,11 @@ Patch2:		udhcp-0.9.8-gcc3_4.patch
 # http://www.lart.info/~bwachter/projects/dietlinux/download/current/patches/udhcp-0.9.8-dietlibc.patch
 # P1 is rediffed for system dietlibc (only Makefile.dietlibc)
 Patch1:		udhcp-0.9.8-dietlibc.patch
+Patch3:		udhcp-rootpath_fix.diff
 %if %{build_diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
-BuildRoot:	%{_tmppath}/%{name}-%{version}-root
+BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
 %description 
 This is the very small DHCP server and client written by Moreton Bay/Lineo.
@@ -60,6 +61,8 @@ This is the very small DHCP client written by Moreton Bay/Lineo.
 %patch1 -p1 -b .DIET
 %endif
 
+%patch3 -p0
+
 cp %{SOURCE1} udhcpd.conf
 cp %{SOURCE2} udhcpd.init
 
@@ -73,7 +76,7 @@ make
 %endif
 
 %install
-[ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
+rm -rf %{buildroot}
 
 install -d %{buildroot}%{_sysconfdir}
 install -d %{buildroot}%{_initrddir}
@@ -97,7 +100,7 @@ fi
 %_preun_service udhcpd
 
 %clean
-[ -n "%{buildroot}" -a "%{buildroot}" != / ] && rm -rf %{buildroot}
+rm -rf %{buildroot}
 
 %files -n udhcpd
 %defattr(-,root,root)
@@ -119,5 +122,3 @@ fi
 %dir %{_datadir}/udhcpc/
 %{_datadir}/udhcpc/default.*
 %{_mandir}/man8/udhcpc.*
-
-
