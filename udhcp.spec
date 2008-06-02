@@ -80,20 +80,20 @@ rm -rf %{buildroot}
 
 install -d %{buildroot}%{_sysconfdir}
 install -d %{buildroot}%{_initrddir}
-install -d %{buildroot}%{_localstatedir}/udhcpd
+install -d %{buildroot}%{_localstatedir}/lib/udhcpd
 
 %makeinstall_std
 
 install -m0644 udhcpd.conf %{buildroot}%{_sysconfdir}/udhcpd.conf
 install -m0755 udhcpd.init %{buildroot}%{_initrddir}/udhcpd
 
-touch %{buildroot}%{_localstatedir}/udhcpd/udhcpd.leases
+touch %{buildroot}%{_localstatedir}/lib/udhcpd/udhcpd.leases
 
 %post -n udhcpd
 %_post_service udhcpd
 # New udhcpd lease file
-if [ ! -f %{_localstatedir}/udhcpd/udhcpd.leases ]; then
-    touch %{_localstatedir}/udhcpd/udhcpd.leases
+if [ ! -f %{_localstatedir}/lib/udhcpd/udhcpd.leases ]; then
+    touch %{_localstatedir}/lib/udhcpd/udhcpd.leases
 fi
 
 %preun -n udhcpd
@@ -107,8 +107,8 @@ rm -rf %{buildroot}
 %doc README COPYING AUTHORS TODO samples/udhcpd.conf
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/udhcpd.conf
 %attr(755,root,root) %{_initrddir}/udhcpd
-%dir %{_localstatedir}/udhcpd/
-%config(noreplace) %ghost %{_localstatedir}/udhcpd/udhcpd.leases
+%dir %{_localstatedir}/lib/udhcpd/
+%config(noreplace) %ghost %{_localstatedir}/lib/udhcpd/udhcpd.leases
 %{_sbindir}/udhcpd
 %{_bindir}/dumpleases
 %{_mandir}/man1/dumpleases.*
