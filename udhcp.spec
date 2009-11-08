@@ -4,30 +4,29 @@
 #
 #	--with diet	Compile udhcp against dietlibc
 
-
 %define build_diet 0
+%define snapshot 20050303
 
 # commandline overrides:
 # rpm -ba|--rebuild --with 'xxx'
 %{?_with_diet: %{expand: %%define build_diet 1}}
 
+
 Summary:	Very small DHCP server/client
 Name:		udhcp
-Version:	0.9.8
-Release:	%mkrel 13
+Version:	0.9.9
+Release:	%mkrel 0.%{snapshot}.1
 License:	GPL
 Group:		System/Servers
 URL:		http://udhcp.busybox.net/
-Source0:	http://udhcp.busybox.net/source/%{name}-%{version}.tar.bz2
+Source0:	http://udhcp.busybox.net/source/%{name}-%{snapshot}.tar.gz
 Source1:	udhcpd.conf
 Source2:	udhcpd.init
-Patch0:		%{name}-0.9.7-Makefile.patch
-Patch2:		udhcp-0.9.8-gcc3_4.patch
+Patch0:		udhcp-0.9.9-build-options.patch
+Patch1:		udhcp-0.9.9-change-client-installation-prefix.patch
 # http://www.lart.info/~bwachter/projects/dietlinux/download/current/patches/udhcp-0.9.8-dietlibc.patch
 # P1 is rediffed for system dietlibc (only Makefile.dietlibc)
-Patch1:		udhcp-0.9.8-dietlibc.patch
-Patch3:		udhcp-rootpath_fix.diff
-Patch4:		udhcp-0.9.8-altport.diff
+Patch2:		udhcp-0.9.8-dietlibc.patch
 %if %{build_diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
@@ -53,20 +52,16 @@ Group:		System/Configuration/Networking
 This is the very small DHCP client written by Moreton Bay/Lineo.
 
 %prep
-
-%setup -q
-%patch0 -p0
-%patch2 -p1 -b .gcc3_4
+%setup -q -n %{name}
+%patch0 -p1 -b .options
+%patch1 -p1 -b .install
 
 %if %{build_diet}
-%patch1 -p1 -b .DIET
+%patch2 -p1 -b .DIET
 %ifarch x86_64
 perl -pi -e "s|lib-i386|lib-x86_64|g" Makefile.dietlibc
 %endif
 %endif
-
-%patch3 -p0
-%patch4 -p1
 
 cp %{SOURCE1} udhcpd.conf
 cp %{SOURCE2} udhcpd.init
@@ -110,8 +105,8 @@ rm -rf %{buildroot}
 %files -n udhcpd
 %defattr(-,root,root)
 %doc README COPYING AUTHORS TODO samples/udhcpd.conf
-%config(noreplace) %attr(644,root,root) %{_sysconfdir}/udhcpd.conf
-%attr(755,root,root) %{_initrddir}/udhcpd
+%config(noreplace) %{_sysconfdir}/udhcpd.conf
+%{_initrddir}/udhcpd
 %dir /var/lib/udhcpd/
 %config(noreplace) %ghost /var/lib/udhcpd/udhcpd.leases
 %{_sbindir}/udhcpd
@@ -120,10 +115,9 @@ rm -rf %{buildroot}
 %{_mandir}/man5/udhcpd.conf.*
 %{_mandir}/man8/udhcpd.*
 
-%files -n  udhcpc
+%files -n udhcpc
 %defattr(-,root,root)
 %doc README COPYING AUTHORS TODO samples/sample*
 /sbin/udhcpc
-%dir %{_datadir}/udhcpc/
-%{_datadir}/udhcpc/default.*
+%{_sysconfdir}/udhcpc
 %{_mandir}/man8/udhcpc.*
