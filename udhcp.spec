@@ -15,7 +15,7 @@
 Summary:	Very small DHCP server/client
 Name:		udhcp
 Version:	0.9.9
-Release:	%mkrel 0.%{snapshot}.1
+Release:	%mkrel 0.%{snapshot}.2
 License:	GPL
 Group:		System/Servers
 URL:		http://udhcp.busybox.net/
