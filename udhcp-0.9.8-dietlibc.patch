@@ -1,0 +1,558 @@
+diff -Naur udhcp-0.9.8/Makefile.dietlibc udhcp-0.9.8.oden/Makefile.dietlibc
+--- udhcp-0.9.8/Makefile.dietlibc	1970-01-01 01:00:00.000000000 +0100
++++ udhcp-0.9.8.oden/Makefile.dietlibc	2003-05-03 23:39:19.000000000 +0200
+@@ -0,0 +1,106 @@
++# udhcp makefile
++
++prefix=/usr
++SBINDIR=/sbin
++USRSBINDIR=${prefix}/sbin
++USRBINDIR=${prefix}/bin
++USRSHAREDIR=${prefix}/share
++
++# Uncomment this to get a shared binary. Call as udhcpd for the server,
++# and udhcpc for the client
++#COMBINED_BINARY=1
++
++# Uncomment this for extra output and to compile with debugging symbols
++#DEBUG=1
++
++# Uncomment this to output messages to syslog, otherwise, messages go to stdout
++CFLAGS += -DSYSLOG
++
++#CROSS_COMPILE=arm-uclibc-
++CC = diet $(CROSS_COMPILE)gcc -D_BSD_SOURCE
++LD = diet $(CROSS_COMPILE)gcc -D_BSD_SOURCE
++INSTALL = install
++
++VER := 0.9.8
++
++
++OBJS_SHARED = options.o socket.o packet.o pidfile.o
++DHCPD_OBJS = dhcpd.o arpping.o files.o leases.o serverpacket.o /usr/lib/dietlibc/lib-i386/libcompat.a
++DHCPC_OBJS = dhcpc.o clientpacket.o script.o /usr/lib/dietlibc/lib-i386/libcompat.a
++
++ifdef COMBINED_BINARY
++EXEC1 = udhcpd
++OBJS1 = $(DHCPD_OBJS) $(DHCPC_OBJS) $(OBJS_SHARED) frontend.o
++CFLAGS += -DCOMBINED_BINARY
++else
++EXEC1 = udhcpd
++OBJS1 = $(DHCPD_OBJS) $(OBJS_SHARED)
++
++EXEC2 = udhcpc
++OBJS2 = $(DHCPC_OBJS) $(OBJS_SHARED)
++endif
++
++EXEC3 = dumpleases
++OBJS3 = dumpleases.o
++
++BOOT_PROGRAMS = udhcpc
++DAEMONS = udhcpd
++COMMANDS = dumpleases
++
++ifdef SYSLOG
++CFLAGS += -DSYSLOG
++endif
++
++CFLAGS += -W -Wall -Wstrict-prototypes -DVERSION='"$(VER)"' 
++
++ifdef DEBUG
++CFLAGS += -g -DDEBUG
++STRIP=true
++else
++CFLAGS += -Os -fomit-frame-pointer
++STRIP=$(CROSS_COMPILE)strip
++endif
++
++all: $(EXEC1) $(EXEC2) $(EXEC3)
++	$(STRIP) --remove-section=.note --remove-section=.comment $(EXEC1) $(EXEC2) $(EXEC3)
++
++$(OBJS1) $(OBJS2) $(OBJS3): *.h Makefile
++$(EXEC1) $(EXEC2) $(EXEC3): Makefile
++
++.c.o:
++	$(CC) -c $(CFLAGS) $<
++	
++$(EXEC1): $(OBJS1)
++	$(LD) $(LDFLAGS) $(OBJS1) -o $(EXEC1)
++
++$(EXEC2): $(OBJS2)
++	$(LD) $(LDFLAGS) $(OBJS2) -o $(EXEC2)
++
++$(EXEC3): $(OBJS3)
++	$(LD) $(LDFLAGS) $(OBJS3) -o $(EXEC3)
++
++
++install: all
++
++	$(INSTALL) $(DAEMONS) $(USRSBINDIR)
++	$(INSTALL) $(COMMANDS) $(USRBINDIR)
++ifdef COMBINED_BINARY
++	ln -sf $(USRSBINDIR)/$(DAEMONS) $(SBINDIR)/$(BOOT_PROGRAMS)
++else
++	$(INSTALL) $(BOOT_PROGRAMS) $(SBINDIR)
++endif
++	mkdir -p $(USRSHAREDIR)/udhcpc
++	for name in bound deconfig renew script ; do \
++		$(INSTALL) samples/sample.$$name \
++			$(USRSHAREDIR)/udhcpc/default.$$name ; \
++	done
++	mkdir -p $(USRSHAREDIR)/man/man1
++	$(INSTALL) dumpleases.1 $(USRSHAREDIR)/man/man1
++	mkdir -p $(USRSHAREDIR)/man/man5
++	$(INSTALL) udhcpd.conf.5 $(USRSHAREDIR)/man/man5
++	mkdir -p $(USRSHAREDIR)/man/man8
++	$(INSTALL) udhcpc.8 udhcpd.8 $(USRSHAREDIR)/man/man8
++
++clean:
++	-rm -f udhcpd udhcpc dumpleases *.o core
++
+diff -Naur udhcp-0.9.8/arpping.c udhcp-0.9.8.oden/arpping.c
+--- udhcp-0.9.8/arpping.c	2002-08-27 19:11:56.000000000 +0200
++++ udhcp-0.9.8.oden/arpping.c	2003-05-03 23:39:19.000000000 +0200
+@@ -32,7 +32,7 @@
+  */  
+ 
+ /* FIXME: match response against chaddr */
+-int arpping(u_int32_t yiaddr, u_int32_t ip, unsigned char *mac, char *interface)
++int arpping(uint32_t yiaddr, uint32_t ip, unsigned char *mac, char *interface)
+ {
+ 
+ 	int	timeout = 2;
+@@ -89,7 +89,7 @@
+ 		} else if (FD_ISSET(s, &fdset)) {
+ 			if (recv(s, &arp, sizeof(arp), 0) < 0 ) rv = 0;
+ 			if (arp.operation == htons(ARPOP_REPLY) && 
+-			    bcmp(arp.tHaddr, mac, 6) == 0 && 
++			    memcmp(arp.tHaddr, mac, 6) == 0 && 
+ 			    *((u_int *) arp.sInaddr) == yiaddr) {
+ 				DEBUG(LOG_INFO, "Valid arp reply receved for this address");
+ 				rv = 0;
+diff -Naur udhcp-0.9.8/arpping.h udhcp-0.9.8.oden/arpping.h
+--- udhcp-0.9.8/arpping.h	2002-04-03 00:49:32.000000000 +0200
++++ udhcp-0.9.8.oden/arpping.h	2003-05-03 23:39:19.000000000 +0200
+@@ -25,6 +25,6 @@
+ };
+ 
+ /* function prototypes */
+-int arpping(u_int32_t yiaddr, u_int32_t ip, unsigned char *arp, char *interface);
++int arpping(uint32_t yiaddr, uint32_t ip, unsigned char *arp, char *interface);
+ 
+ #endif
+diff -Naur udhcp-0.9.8/clientpacket.c udhcp-0.9.8.oden/clientpacket.c
+--- udhcp-0.9.8/clientpacket.c	2002-10-31 18:29:26.000000000 +0100
++++ udhcp-0.9.8.oden/clientpacket.c	2003-05-03 23:39:19.000000000 +0200
+@@ -183,8 +183,8 @@
+ {
+ 	int bytes;
+ 	struct udp_dhcp_packet packet;
+-	u_int32_t source, dest;
+-	u_int16_t check;
++	uint32_t source, dest;
++	uint16_t check;
+ 
+ 	memset(&packet, 0, sizeof(struct udp_dhcp_packet));
+ 	bytes = read(fd, &packet, sizeof(struct udp_dhcp_packet));
+diff -Naur udhcp-0.9.8/dhcpd.c udhcp-0.9.8.oden/dhcpd.c
+--- udhcp-0.9.8/dhcpd.c	2002-09-20 22:36:15.000000000 +0200
++++ udhcp-0.9.8.oden/dhcpd.c	2003-05-03 23:39:19.000000000 +0200
+@@ -88,7 +88,7 @@
+ 	struct dhcpMessage packet;
+ 	unsigned char *state;
+ 	unsigned char *server_id, *requested;
+-	u_int32_t server_id_align, requested_align;
++	uint32_t server_id_align, requested_align;
+ 	unsigned long timeout_end;
+ 	struct option_set *option;
+ 	struct dhcpOfferedAddr *lease;
+diff -Naur udhcp-0.9.8/dhcpd.h udhcp-0.9.8.oden/dhcpd.h
+--- udhcp-0.9.8/dhcpd.h	2002-09-20 22:36:15.000000000 +0200
++++ udhcp-0.9.8.oden/dhcpd.h	2003-05-03 23:39:19.000000000 +0200
+@@ -98,9 +98,9 @@
+ };
+ 
+ struct server_config_t {
+-	u_int32_t server;		/* Our IP, in network order */
+-	u_int32_t start;		/* Start address of leases, network order */
+-	u_int32_t end;			/* End of leases, network order */
++	uint32_t server;		/* Our IP, in network order */
++	uint32_t start;		/* Start address of leases, network order */
++	uint32_t end;			/* End of leases, network order */
+ 	struct option_set *options;	/* List of DHCP options loaded from the config file */
+ 	char *interface;		/* The name of the interface to use */
+ 	int ifindex;			/* Index number of the interface to use */
+@@ -119,7 +119,7 @@
+ 	char *lease_file;
+ 	char *pidfile;
+ 	char *notify_file;		/* What to run whenever leases are written */
+-	u_int32_t siaddr;		/* next server bootp option */
++	uint32_t siaddr;		/* next server bootp option */
+ 	char *sname;			/* bootp server name */
+ 	char *boot_file;		/* bootp boot file option */
+ };	
+diff -Naur udhcp-0.9.8/dumpleases.c udhcp-0.9.8.oden/dumpleases.c
+--- udhcp-0.9.8/dumpleases.c	2002-09-20 22:36:15.000000000 +0200
++++ udhcp-0.9.8.oden/dumpleases.c	2003-05-03 23:39:19.000000000 +0200
+@@ -24,8 +24,8 @@
+ 
+ struct lease_t {
+ 	unsigned char chaddr[16];
+-	u_int32_t yiaddr;
+-	u_int32_t expires;
++	uint32_t yiaddr;
++	uint32_t expires;
+ };
+ 
+ #ifdef BB_VER
+diff -Naur udhcp-0.9.8/files.c udhcp-0.9.8.oden/files.c
+--- udhcp-0.9.8/files.c	2002-09-18 00:44:01.000000000 +0200
++++ udhcp-0.9.8.oden/files.c	2003-05-03 23:39:19.000000000 +0200
+@@ -47,7 +47,7 @@
+ 
+ static int read_u32(char *line, void *arg)
+ {
+-	u_int32_t *dest = arg;
++	uint32_t *dest = arg;
+ 	char *endptr;
+ 	*dest = strtoul(line, &endptr, 0);
+ 	return endptr[0] == '\0';
+@@ -77,8 +77,8 @@
+ 	struct dhcp_option *option = NULL;
+ 	int retval = 0, length = 0;
+ 	char buffer[255];
+-	u_int16_t result_u16;
+-	u_int32_t result_u32;
++	uint16_t result_u16;
++	uint32_t result_u32;
+ 	int i;
+ 
+ 	if (!(opt = strtok(line, " \t="))) return 0;
+diff -Naur udhcp-0.9.8/leases.c udhcp-0.9.8.oden/leases.c
+--- udhcp-0.9.8/leases.c	2002-08-27 23:22:01.000000000 +0200
++++ udhcp-0.9.8.oden/leases.c	2003-05-03 23:39:19.000000000 +0200
+@@ -19,7 +19,7 @@
+ unsigned char blank_chaddr[] = {[0 ... 15] = 0};
+ 
+ /* clear every lease out that chaddr OR yiaddr matches and is nonzero */
+-void clear_lease(u_int8_t *chaddr, u_int32_t yiaddr)
++void clear_lease(uint8_t *chaddr, uint32_t yiaddr)
+ {
+ 	unsigned int i, j;
+ 	
+@@ -34,7 +34,7 @@
+ 
+ 
+ /* add a lease into the table, clearing out any old ones */
+-struct dhcpOfferedAddr *add_lease(u_int8_t *chaddr, u_int32_t yiaddr, unsigned long lease)
++struct dhcpOfferedAddr *add_lease(uint8_t *chaddr, uint32_t yiaddr, unsigned long lease)
+ {
+ 	struct dhcpOfferedAddr *oldest;
+ 	
+@@ -79,7 +79,7 @@
+ 
+ 
+ /* Find the first lease that matches chaddr, NULL if no match */
+-struct dhcpOfferedAddr *find_lease_by_chaddr(u_int8_t *chaddr)
++struct dhcpOfferedAddr *find_lease_by_chaddr(uint8_t *chaddr)
+ {
+ 	unsigned int i;
+ 
+@@ -91,7 +91,7 @@
+ 
+ 
+ /* Find the first lease that matches yiaddr, NULL is no match */
+-struct dhcpOfferedAddr *find_lease_by_yiaddr(u_int32_t yiaddr)
++struct dhcpOfferedAddr *find_lease_by_yiaddr(uint32_t yiaddr)
+ {
+ 	unsigned int i;
+ 
+@@ -104,9 +104,9 @@
+ 
+ /* find an assignable address, it check_expired is true, we check all the expired leases as well.
+  * Maybe this should try expired leases by age... */
+-u_int32_t find_address(int check_expired) 
++uint32_t find_address(int check_expired) 
+ {
+-	u_int32_t addr, ret;
++	uint32_t addr, ret;
+ 	struct dhcpOfferedAddr *lease = NULL;		
+ 
+ 	addr = ntohl(server_config.start); /* addr is in host order here */
+@@ -136,7 +136,7 @@
+ 
+ 
+ /* check is an IP is taken, if it is, add it to the lease table */
+-int check_ip(u_int32_t addr)
++int check_ip(uint32_t addr)
+ {
+ 	struct in_addr temp;
+ 	
+diff -Naur udhcp-0.9.8/leases.h udhcp-0.9.8.oden/leases.h
+--- udhcp-0.9.8/leases.h	2002-08-27 20:11:10.000000000 +0200
++++ udhcp-0.9.8.oden/leases.h	2003-05-03 23:39:19.000000000 +0200
+@@ -4,21 +4,21 @@
+ 
+ 
+ struct dhcpOfferedAddr {
+-	u_int8_t chaddr[16];
+-	u_int32_t yiaddr;	/* network order */
+-	u_int32_t expires;	/* host order */
++	uint8_t chaddr[16];
++	uint32_t yiaddr;	/* network order */
++	uint32_t expires;	/* host order */
+ };
+ 
+ extern unsigned char blank_chaddr[];
+ 
+-void clear_lease(u_int8_t *chaddr, u_int32_t yiaddr);
+-struct dhcpOfferedAddr *add_lease(u_int8_t *chaddr, u_int32_t yiaddr, unsigned long lease);
++void clear_lease(uint8_t *chaddr, uint32_t yiaddr);
++struct dhcpOfferedAddr *add_lease(uint8_t *chaddr, uint32_t yiaddr, unsigned long lease);
+ int lease_expired(struct dhcpOfferedAddr *lease);
+ struct dhcpOfferedAddr *oldest_expired_lease(void);
+-struct dhcpOfferedAddr *find_lease_by_chaddr(u_int8_t *chaddr);
+-struct dhcpOfferedAddr *find_lease_by_yiaddr(u_int32_t yiaddr);
+-u_int32_t find_address(int check_expired);
+-int check_ip(u_int32_t addr);
++struct dhcpOfferedAddr *find_lease_by_chaddr(uint8_t *chaddr);
++struct dhcpOfferedAddr *find_lease_by_yiaddr(uint32_t yiaddr);
++uint32_t find_address(int check_expired);
++int check_ip(uint32_t addr);
+ 
+ 
+ #endif
+diff -Naur udhcp-0.9.8/options.c udhcp-0.9.8.oden/options.c
+--- udhcp-0.9.8/options.c	2002-05-23 21:20:42.000000000 +0200
++++ udhcp-0.9.8.oden/options.c	2003-05-03 23:39:19.000000000 +0200
+@@ -147,17 +147,17 @@
+ 
+ 
+ /* add a one to four byte option to a packet */
+-int add_simple_option(unsigned char *optionptr, unsigned char code, u_int32_t data)
++int add_simple_option(unsigned char *optionptr, unsigned char code, uint32_t data)
+ {
+ 	char length = 0;
+ 	int i;
+ 	unsigned char option[2 + 4];
+ 	unsigned char *u8;
+-	u_int16_t *u16;
+-	u_int32_t *u32;
+-	u_int32_t aligned;
++	uint16_t *u16;
++	uint32_t *u32;
++	uint32_t aligned;
+ 	u8 = (unsigned char *) &aligned;
+-	u16 = (u_int16_t *) &aligned;
++	u16 = (uint16_t *) &aligned;
+ 	u32 = &aligned;
+ 
+ 	for (i = 0; options[i].code; i++)
+diff -Naur udhcp-0.9.8/options.h udhcp-0.9.8.oden/options.h
+--- udhcp-0.9.8/options.h	2002-03-23 01:34:03.000000000 +0100
++++ udhcp-0.9.8.oden/options.h	2003-05-03 23:39:19.000000000 +0200
+@@ -33,7 +33,7 @@
+ unsigned char *get_option(struct dhcpMessage *packet, int code);
+ int end_option(unsigned char *optionptr);
+ int add_option_string(unsigned char *optionptr, unsigned char *string);
+-int add_simple_option(unsigned char *optionptr, unsigned char code, u_int32_t data);
++int add_simple_option(unsigned char *optionptr, unsigned char code, uint32_t data);
+ struct option_set *find_option(struct option_set *opt_list, char code);
+ void attach_option(struct option_set **opt_list, struct dhcp_option *option, char *buffer, int length);
+ 
+diff -Naur udhcp-0.9.8/packet.c udhcp-0.9.8.oden/packet.c
+--- udhcp-0.9.8/packet.c	2002-08-27 20:23:14.000000000 +0200
++++ udhcp-0.9.8.oden/packet.c	2003-05-03 23:39:19.000000000 +0200
+@@ -83,13 +83,13 @@
+ }
+ 
+ 
+-u_int16_t checksum(void *addr, int count)
++uint16_t checksum(void *addr, int count)
+ {
+ 	/* Compute Internet Checksum for "count" bytes
+ 	 *         beginning at location "addr".
+ 	 */
+ 	register int32_t sum = 0;
+-	u_int16_t *source = (u_int16_t *) addr;
++	uint16_t *source = (uint16_t *) addr;
+ 
+ 	while (count > 1)  {
+ 		/*  This is the inner loop */
+@@ -101,7 +101,7 @@
+ 	if (count > 0) {
+ 		/* Make sure that the left-over byte is added correctly both
+ 		 * with little and big endian hosts */
+-		u_int16_t tmp = 0;
++		uint16_t tmp = 0;
+ 		*(unsigned char *) (&tmp) = * (unsigned char *) source;
+ 		sum += tmp;
+ 	}
+@@ -114,8 +114,8 @@
+ 
+ 
+ /* Constuct a ip/udp header for a packet, and specify the source and dest hardware address */
+-int raw_packet(struct dhcpMessage *payload, u_int32_t source_ip, int source_port,
+-		   u_int32_t dest_ip, int dest_port, unsigned char *dest_arp, int ifindex)
++int raw_packet(struct dhcpMessage *payload, uint32_t source_ip, int source_port,
++		   uint32_t dest_ip, int dest_port, unsigned char *dest_arp, int ifindex)
+ {
+ 	int fd;
+ 	int result;
+@@ -167,8 +167,8 @@
+ 
+ 
+ /* Let the kernel do all the work for packet generation */
+-int kernel_packet(struct dhcpMessage *payload, u_int32_t source_ip, int source_port,
+-		   u_int32_t dest_ip, int dest_port)
++int kernel_packet(struct dhcpMessage *payload, uint32_t source_ip, int source_port,
++		   uint32_t dest_ip, int dest_port)
+ {
+ 	int n = 1;
+ 	int fd, result;
+diff -Naur udhcp-0.9.8/packet.h udhcp-0.9.8.oden/packet.h
+--- udhcp-0.9.8/packet.h	2002-04-03 00:49:33.000000000 +0200
++++ udhcp-0.9.8.oden/packet.h	2003-05-03 23:39:19.000000000 +0200
+@@ -5,22 +5,22 @@
+ #include <netinet/ip.h>
+ 
+ struct dhcpMessage {
+-	u_int8_t op;
+-	u_int8_t htype;
+-	u_int8_t hlen;
+-	u_int8_t hops;
+-	u_int32_t xid;
+-	u_int16_t secs;
+-	u_int16_t flags;
+-	u_int32_t ciaddr;
+-	u_int32_t yiaddr;
+-	u_int32_t siaddr;
+-	u_int32_t giaddr;
+-	u_int8_t chaddr[16];
+-	u_int8_t sname[64];
+-	u_int8_t file[128];
+-	u_int32_t cookie;
+-	u_int8_t options[308]; /* 312 - cookie */ 
++	uint8_t op;
++	uint8_t htype;
++	uint8_t hlen;
++	uint8_t hops;
++	uint32_t xid;
++	uint16_t secs;
++	uint16_t flags;
++	uint32_t ciaddr;
++	uint32_t yiaddr;
++	uint32_t siaddr;
++	uint32_t giaddr;
++	uint8_t chaddr[16];
++	uint8_t sname[64];
++	uint8_t file[128];
++	uint32_t cookie;
++	uint8_t options[308]; /* 312 - cookie */ 
+ };
+ 
+ struct udp_dhcp_packet {
+@@ -31,11 +31,11 @@
+ 
+ void init_header(struct dhcpMessage *packet, char type);
+ int get_packet(struct dhcpMessage *packet, int fd);
+-u_int16_t checksum(void *addr, int count);
+-int raw_packet(struct dhcpMessage *payload, u_int32_t source_ip, int source_port,
+-		   u_int32_t dest_ip, int dest_port, unsigned char *dest_arp, int ifindex);
+-int kernel_packet(struct dhcpMessage *payload, u_int32_t source_ip, int source_port,
+-		   u_int32_t dest_ip, int dest_port);
++uint16_t checksum(void *addr, int count);
++int raw_packet(struct dhcpMessage *payload, uint32_t source_ip, int source_port,
++		   uint32_t dest_ip, int dest_port, unsigned char *dest_arp, int ifindex);
++int kernel_packet(struct dhcpMessage *payload, uint32_t source_ip, int source_port,
++		   uint32_t dest_ip, int dest_port);
+ 
+ 
+ #endif
+diff -Naur udhcp-0.9.8/script.c udhcp-0.9.8.oden/script.c
+--- udhcp-0.9.8/script.c	2002-09-20 22:36:15.000000000 +0200
++++ udhcp-0.9.8.oden/script.c	2003-05-03 23:39:19.000000000 +0200
+@@ -67,9 +67,9 @@
+ static void fill_options(char *dest, unsigned char *option, struct dhcp_option *type_p)
+ {
+ 	int type, optlen;
+-	u_int16_t val_u16;
++	uint16_t val_u16;
+ 	int16_t val_s16;
+-	u_int32_t val_u32;
++	uint32_t val_u32;
+ 	int32_t val_s32;
+ 	int len = option[OPT_LEN - 2];
+ 
+diff -Naur udhcp-0.9.8/serverpacket.c udhcp-0.9.8.oden/serverpacket.c
+--- udhcp-0.9.8/serverpacket.c	2002-04-03 00:49:33.000000000 +0200
++++ udhcp-0.9.8.oden/serverpacket.c	2003-05-03 23:39:19.000000000 +0200
+@@ -45,7 +45,7 @@
+ static int send_packet_to_client(struct dhcpMessage *payload, int force_broadcast)
+ {
+ 	unsigned char *chaddr;
+-	u_int32_t ciaddr;
++	uint32_t ciaddr;
+ 	
+ 	if (force_broadcast) {
+ 		DEBUG(LOG_INFO, "broadcasting packet to client (NAK)");
+@@ -109,7 +109,7 @@
+ {
+ 	struct dhcpMessage packet;
+ 	struct dhcpOfferedAddr *lease = NULL;
+-	u_int32_t req_align, lease_time_align = server_config.lease;
++	uint32_t req_align, lease_time_align = server_config.lease;
+ 	unsigned char *req, *lease_time;
+ 	struct option_set *curr;
+ 	struct in_addr addr;
+@@ -197,12 +197,12 @@
+ }
+ 
+ 
+-int sendACK(struct dhcpMessage *oldpacket, u_int32_t yiaddr)
++int sendACK(struct dhcpMessage *oldpacket, uint32_t yiaddr)
+ {
+ 	struct dhcpMessage packet;
+ 	struct option_set *curr;
+ 	unsigned char *lease_time;
+-	u_int32_t lease_time_align = server_config.lease;
++	uint32_t lease_time_align = server_config.lease;
+ 	struct in_addr addr;
+ 
+ 	init_packet(&packet, oldpacket, DHCPACK);
+diff -Naur udhcp-0.9.8/serverpacket.h udhcp-0.9.8.oden/serverpacket.h
+--- udhcp-0.9.8/serverpacket.h	2001-08-11 02:44:44.000000000 +0200
++++ udhcp-0.9.8.oden/serverpacket.h	2003-05-03 23:39:19.000000000 +0200
+@@ -4,7 +4,7 @@
+ 
+ int sendOffer(struct dhcpMessage *oldpacket);
+ int sendNAK(struct dhcpMessage *oldpacket);
+-int sendACK(struct dhcpMessage *oldpacket, u_int32_t yiaddr);
++int sendACK(struct dhcpMessage *oldpacket, uint32_t yiaddr);
+ int send_inform(struct dhcpMessage *oldpacket);
+ 
+ 
+diff -Naur udhcp-0.9.8/socket.c udhcp-0.9.8.oden/socket.c
+--- udhcp-0.9.8/socket.c	2002-09-20 22:36:15.000000000 +0200
++++ udhcp-0.9.8.oden/socket.c	2003-05-03 23:39:19.000000000 +0200
+@@ -43,7 +43,7 @@
+ 
+ #include "debug.h"
+ 
+-int read_interface(char *interface, int *ifindex, u_int32_t *addr, unsigned char *arp)
++int read_interface(char *interface, int *ifindex, uint32_t *addr, unsigned char *arp)
+ {
+ 	int fd;
+ 	struct ifreq ifr;
+diff -Naur udhcp-0.9.8/socket.h udhcp-0.9.8.oden/socket.h
+--- udhcp-0.9.8/socket.h	2002-04-03 00:26:18.000000000 +0200
++++ udhcp-0.9.8.oden/socket.h	2003-05-03 23:39:19.000000000 +0200
+@@ -2,7 +2,7 @@
+ #ifndef _SOCKET_H
+ #define _SOCKET_H
+ 
+-int read_interface(char *interface, int *ifindex, u_int32_t *addr, unsigned char *arp);
++int read_interface(char *interface, int *ifindex, uint32_t *addr, unsigned char *arp);
+ int listen_socket(unsigned int ip, int port, char *inf);
+ int raw_socket(int ifindex);
+ 

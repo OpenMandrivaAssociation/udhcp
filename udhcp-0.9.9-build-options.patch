@@ -1,0 +1,19 @@
+diff -Naur -x '*~' udhcp/Makefile udhcp-build-options/Makefile
+--- udhcp/Makefile	2005-03-03 17:54:10.000000000 +0100
++++ udhcp-build-options/Makefile	2009-11-08 23:02:06.000000000 +0100
+@@ -9,13 +9,13 @@
+ 
+ # Uncomment this to get a shared binary. Call as udhcpd for the server,
+ # and udhcpc for the client
+-COMBINED_BINARY=1
++#COMBINED_BINARY=1
+ 
+ # Uncomment this for extra output and to compile with debugging symbols
+ #UDHCP_DEBUG=1
+ 
+ # Uncomment this to output messages to syslog, otherwise, messages go to stdout
+-#CFLAGS += -DUDHCP_SYSLOG
++CFLAGS += -DUDHCP_SYSLOG
+ 
+ #CROSS_COMPILE=arm-uclibc-
+ CC = $(CROSS_COMPILE)gcc

@@ -1,0 +1,62 @@
+diff -Naur -x '*~' udhcp/dhcpc.h udhcp-change-client-installation-prefix/dhcpc.h
+--- udhcp/dhcpc.h	2005-03-03 17:54:10.000000000 +0100
++++ udhcp-change-client-installation-prefix/dhcpc.h	2009-11-08 23:04:58.000000000 +0100
+@@ -2,7 +2,7 @@
+ #ifndef _DHCPC_H
+ #define _DHCPC_H
+ 
+-#define DEFAULT_SCRIPT  "/usr/share/udhcpc/default.script"
++#define DEFAULT_SCRIPT  "/etc/udhcpc/default.script"
+ 
+ /* allow libbb_udhcp.h to redefine DEFAULT_SCRIPT */
+ #include "libbb_udhcp.h"
+diff -Naur -x '*~' udhcp/Makefile udhcp-change-client-installation-prefix/Makefile
+--- udhcp/Makefile	2005-03-03 17:54:10.000000000 +0100
++++ udhcp-change-client-installation-prefix/Makefile	2009-11-08 23:11:17.000000000 +0100
+@@ -1,11 +1,12 @@
+ # udhcp makefile
+ 
+-DESTDIR     = 
++
+ prefix      = /usr
+-SBINDIR     = /sbin
++SBINDIR     = $(DESTDIR)/sbin
+ USRSBINDIR  = $(DESTDIR)${prefix}/sbin
+ USRBINDIR   = $(DESTDIR)${prefix}/bin
+ USRSHAREDIR = $(DESTDIR)${prefix}/share
++ETCDIR      = $(DESTDIR)/etc
+ 
+ # Uncomment this to get a shared binary. Call as udhcpd for the server,
+ # and udhcpc for the client
+@@ -79,18 +80,18 @@
+ 
+ 
+ install: all
+-	mkdir -p $(USRSBINDIR) $(USRBINDIR) 
++	mkdir -p $(USRSBINDIR) $(USRBINDIR) $(SBINDIR)
+ 	$(INSTALL) -m 755 $(DAEMON) $(USRSBINDIR)
+ 	$(INSTALL) -m 755 $(COMMAND) $(USRBINDIR)
+ ifdef COMBINED_BINARY
+ 	ln -sf $(DAEMON) $(USRSBINDIR)/$(BOOT_PROGRAM)
+ else
+-	$(INSTALL) -m 755 $(BOOT_PROGRAM) $(USRSBINDIR)
++	$(INSTALL) -m 755 $(BOOT_PROGRAM) $(SBINDIR)
+ endif
+-	mkdir -p $(USRSHAREDIR)/udhcpc
++	mkdir -p $(ETCDIR)/udhcpc
+ 	for name in bound deconfig nak renew script ; do \
+ 		$(INSTALL) -m 755 samples/sample.$$name \
+-			$(USRSHAREDIR)/udhcpc/default.$$name ; \
++			$(ETCDIR)/udhcpc/default.$$name ; \
+ 	done
+ 	mkdir -p $(USRSHAREDIR)/man/man1
+ 	$(INSTALL) -m 644 dumpleases.1 $(USRSHAREDIR)/man/man1
+diff -Naur -x '*~' udhcp/samples/sample.script udhcp-change-client-installation-prefix/samples/sample.script
+--- udhcp/samples/sample.script	2005-03-03 17:54:10.000000000 +0100
++++ udhcp-change-client-installation-prefix/samples/sample.script	2009-11-08 23:12:19.000000000 +0100
+@@ -4,4 +4,4 @@
+ # common initialization first, especially if more dhcp event notifications
+ # are added.
+ 
+-exec /usr/share/udhcpc/sample.$1
++exec /etc/udhcpc/default.$1

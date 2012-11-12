@@ -1,0 +1,4 @@
+sources:
+  "udhcp-20050303.tar.gz:"	a91059759fa177d04a97275f3bd0efba031c1aa2
+  "udhcpd.conf:"	ea73848d5b115ed9fa7dd4e85664124b506a3f3b
+  "udhcpd.init:"	488e6100359572396c830936a0ff740c8d8ba7fc
