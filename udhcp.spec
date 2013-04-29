@@ -69,9 +69,9 @@ cp %{SOURCE2} udhcpd.init
 %serverbuild
 
 %if %{build_diet}
-make -f Makefile.dietlibc
+%make -f Makefile.dietlibc STRIP=/bin/true
 %else
-make
+%make STRIP=/bin/true
 %endif
 
 %install
@@ -79,7 +79,7 @@ install -d %{buildroot}%{_sysconfdir}
 install -d %{buildroot}%{_initrddir}
 install -d %{buildroot}/var/lib/udhcpd
 
-%makeinstall_std
+%makeinstall_std STRIP=/bin/true
 
 install -m0644 udhcpd.conf %{buildroot}%{_sysconfdir}/udhcpd.conf
 install -m0755 udhcpd.init %{buildroot}%{_initrddir}/udhcpd
@@ -97,7 +97,6 @@ fi
 %_preun_service udhcpd
 
 %files -n udhcpd
-%defattr(-,root,root)
 %doc README COPYING AUTHORS TODO samples/udhcpd.conf
 %config(noreplace) %{_sysconfdir}/udhcpd.conf
 %{_initrddir}/udhcpd
@@ -110,7 +109,6 @@ fi
 %{_mandir}/man8/udhcpd.*
 
 %files -n udhcpc
-%defattr(-,root,root)
 %doc README COPYING AUTHORS TODO samples/sample*
 /sbin/udhcpc
 %{_sysconfdir}/udhcpc
