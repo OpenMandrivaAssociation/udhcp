@@ -15,7 +15,7 @@
 Summary:	Very small DHCP server/client
 Name:		udhcp
 Version:	0.9.9
-Release:	%mkrel 0.%{snapshot}.2
+Release:	0.%{snapshot}.3
 License:	GPL
 Group:		System/Servers
 URL:		http://udhcp.busybox.net/
@@ -30,7 +30,6 @@ Patch2:		udhcp-0.9.8-dietlibc.patch
 %if %{build_diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
-BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
 %description 
 This is the very small DHCP server and client written by Moreton Bay/Lineo.
@@ -76,8 +75,6 @@ make
 %endif
 
 %install
-rm -rf %{buildroot}
-
 install -d %{buildroot}%{_sysconfdir}
 install -d %{buildroot}%{_initrddir}
 install -d %{buildroot}/var/lib/udhcpd
@@ -98,9 +95,6 @@ fi
 
 %preun -n udhcpd
 %_preun_service udhcpd
-
-%clean
-rm -rf %{buildroot}
 
 %files -n udhcpd
 %defattr(-,root,root)
