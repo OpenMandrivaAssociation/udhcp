@@ -4,13 +4,9 @@
 #
 #	--with diet	Compile udhcp against dietlibc
 
-%define build_diet 0
+%bcond_with	diet
+%bcond_without	uclibc
 %define snapshot 20050303
-
-# commandline overrides:
-# rpm -ba|--rebuild --with 'xxx'
-%{?_with_diet: %{expand: %%define build_diet 1}}
-
 
 Summary:	Very small DHCP server/client
 Name:		udhcp
@@ -27,7 +23,7 @@ Patch1:		udhcp-0.9.9-change-client-installation-prefix.patch
 # http://www.lart.info/~bwachter/projects/dietlinux/download/current/patches/udhcp-0.9.8-dietlibc.patch
 # P1 is rediffed for system dietlibc (only Makefile.dietlibc)
 Patch2:		udhcp-0.9.8-dietlibc.patch
-%if %{build_diet}
+%if %{with diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
 
@@ -50,12 +46,20 @@ Group:		System/Configuration/Networking
 %description -n	udhcpc
 This is the very small DHCP client written by Moreton Bay/Lineo.
 
+%package -n	uclibc-udhcp
+Summary:	Verry small DHCP client & server (uClibc build)
+Group:		System/Configuration/Networking
+Requires:	udhcpd = %{EVRD} udhcpc = %{EVRD}
+
+%description -n	uclibc-udhcp
+This is the very small DHCP client & server written by Moreton Bay/Lineo.
+
 %prep
 %setup -q -n %{name}
 %patch0 -p1 -b .options
 %patch1 -p1 -b .install
 
-%if %{build_diet}
+%if %{with diet}
 %patch2 -p1 -b .DIET
 %ifarch x86_64
 perl -pi -e "s|lib-i386|lib-x86_64|g" Makefile.dietlibc
@@ -65,13 +69,22 @@ perl -pi -e "s|lib-i386|lib-x86_64|g" Makefile.dietlibc
 cp %{SOURCE1} udhcpd.conf
 cp %{SOURCE2} udhcpd.init
 
+%if %{with uclibc}
+mkdir .uclibc
+cp -a * .uclibc
+%endif
 %build
 %serverbuild
 
-%if %{build_diet}
+%if %{with diet}
 %make -f Makefile.dietlibc STRIP=/bin/true
 %else
 %make STRIP=/bin/true
+%endif
+
+%if %{with uclibc}
+pushd .uclibc
+ CC="%{uclibc_cc}" LD="%{uclibc_cc}" CFLAGS="%{uclibc_cflags}" %make COMBINED_BINARY=1 STRIP=/bin/true
 %endif
 
 %install
@@ -80,6 +93,10 @@ install -d %{buildroot}%{_initrddir}
 install -d %{buildroot}/var/lib/udhcpd
 
 %makeinstall_std STRIP=/bin/true
+
+%if %{with uclibc}
+%makeinstall_std SBINDIR=%{buildroot}%{uclibc_root}/sbin USRSBINDIR=%{buildroot}%{uclibc_root}%{_sbindir} USRBINDIR=%{buildroot}%{uclibc_root}%{_bindir}
+%endif
 
 install -m0644 udhcpd.conf %{buildroot}%{_sysconfdir}/udhcpd.conf
 install -m0755 udhcpd.init %{buildroot}%{_initrddir}/udhcpd
@@ -113,6 +130,13 @@ fi
 /sbin/udhcpc
 %{_sysconfdir}/udhcpc
 %{_mandir}/man8/udhcpc.*
+
+%if %{with uclibc}
+%files -n uclibc-udhcp
+%{uclibc_root}/sbin/udhcpc
+%{uclibc_root}%{_bindir}/dumpleases
+%{uclibc_root}/%{_sbindir}/udhcpd
+%endif
 
 
 %changelog
