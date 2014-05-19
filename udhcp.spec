@@ -27,6 +27,9 @@ Patch3:		udhcp-0.9.9-fwhole-program.patch
 %if %{with diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
+%if %{with uclibc}
+BuildRequires:	uClibc-devel
+%endif
 
 %description 
 This is the very small DHCP server and client written by Moreton Bay/Lineo.
