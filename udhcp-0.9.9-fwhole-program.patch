@@ -1,0 +1,30 @@
+--- udhcp/Makefile.fwhole_program~	2014-05-19 22:37:10.899463699 +0000
++++ udhcp/Makefile	2014-05-19 22:43:56.429019467 +0000
+@@ -29,8 +29,7 @@ DHCPC_OBJS = dhcpc.o clientpacket.o clie
+ 
+ ifdef COMBINED_BINARY
+ EXEC1 = udhcpd
+-OBJS1 = $(DHCPD_OBJS) $(DHCPC_OBJS) $(OBJS_SHARED) frontend.o
+-CFLAGS += -DCOMBINED_BINARY
++OBJS1 = $(subst .o,.c,$(DHCPD_OBJS) $(DHCPC_OBJS) $(OBJS_SHARED)) frontend.c
+ else
+ EXEC1 = udhcpd
+ OBJS1 = $(DHCPD_OBJS) $(OBJS_SHARED)
+@@ -69,11 +68,17 @@ $(EXEC1) $(EXEC2) $(EXEC3): Makefile
+ .c.o:
+ 	$(CC) -c $(CFLAGS) $<
+ 	
++ifdef COMBINED_BINARY
++$(EXEC1): $(OBJS1)
++	$(CC) $(CFLAGS) -DCOMBINED_BINARY -fwhole-program -flto -o $@ $(OBJS1)
++
++else
+ $(EXEC1): $(OBJS1)
+ 	$(LD) $(LDFLAGS) $(OBJS1) -o $(EXEC1)
+ 
+ $(EXEC2): $(OBJS2)
+ 	$(LD) $(LDFLAGS) $(OBJS2) -o $(EXEC2)
++endif
+ 
+ $(EXEC3): $(OBJS3)
+ 	$(LD) $(LDFLAGS) $(OBJS3) -o $(EXEC3)

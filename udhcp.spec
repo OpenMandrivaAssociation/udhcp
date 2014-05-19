@@ -23,6 +23,7 @@ Patch1:		udhcp-0.9.9-change-client-installation-prefix.patch
 # http://www.lart.info/~bwachter/projects/dietlinux/download/current/patches/udhcp-0.9.8-dietlibc.patch
 # P1 is rediffed for system dietlibc (only Makefile.dietlibc)
 Patch2:		udhcp-0.9.8-dietlibc.patch
+Patch3:		udhcp-0.9.9-fwhole-program.patch
 %if %{with diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
@@ -65,6 +66,7 @@ This is the very small DHCP client & server written by Moreton Bay/Lineo.
 perl -pi -e "s|lib-i386|lib-x86_64|g" Makefile.dietlibc
 %endif
 %endif
+%patch3 -p1 -b .fwhole_program~
 
 cp %{SOURCE1} udhcpd.conf
 cp %{SOURCE2} udhcpd.init
@@ -73,6 +75,7 @@ cp %{SOURCE2} udhcpd.init
 mkdir .uclibc
 cp -a * .uclibc
 %endif
+
 %build
 %serverbuild
 
