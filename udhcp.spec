@@ -129,7 +129,13 @@ fi
 %files -n udhcpc
 %doc README COPYING AUTHORS TODO samples/sample*
 /sbin/udhcpc
-%{_sysconfdir}/udhcpc
+%dir %{_sysconfdir}/udhcpc
+%config(noreplace) %{_sysconfdir}/udhcpc/default.bound
+%config(noreplace) %{_sysconfdir}/udhcpc/default.deconfig 
+%config(noreplace) %{_sysconfdir}/udhcpc/default.nak    
+%config(noreplace) %{_sysconfdir}/udhcpc/default.renew
+%config(noreplace) %{_sysconfdir}/udhcpc/default.script    
+
 %{_mandir}/man8/udhcpc.*
 
 %if %{with uclibc}
