@@ -11,7 +11,7 @@
 Summary:	Very small DHCP server/client
 Name:		udhcp
 Version:	0.9.9
-Release:	0.%{snapshot}.4
+Release:	0.%{snapshot}.5
 License:	GPLv2+
 Group:		System/Servers
 URL:		http://udhcp.busybox.net/
@@ -24,6 +24,7 @@ Patch1:		udhcp-0.9.9-change-client-installation-prefix.patch
 # P1 is rediffed for system dietlibc (only Makefile.dietlibc)
 Patch2:		udhcp-0.9.8-dietlibc.patch
 Patch3:		udhcp-0.9.9-fwhole-program.patch
+Patch4:		udhcp-0.9.9-etc-resolv.conf-path.patch
 %if %{with diet}
 BuildRequires:	dietlibc-devel >= 0.20-1mdk
 %endif
@@ -70,6 +71,7 @@ sed -e "s|lib-i386|lib-x86_64|g" -i Makefile.dietlibc
 %endif
 %endif
 %patch3 -p1 -b .fwhole_program~
+%patch4 -p1 -b .etcresolv~
 
 %if %{with uclibc}
 mkdir .uclibc
@@ -91,7 +93,6 @@ pushd .uclibc
 %endif
 
 %install
-
 %makeinstall_std STRIP=/bin/true
 
 %if %{with uclibc}
