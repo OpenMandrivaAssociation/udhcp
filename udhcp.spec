@@ -14,7 +14,7 @@ Version:	0.9.9
 Release:	0.%{snapshot}.5
 License:	GPLv2+
 Group:		System/Servers
-URL:		http://udhcp.busybox.net/
+URL:		https://udhcp.busybox.net/
 Source0:	http://udhcp.busybox.net/source/%{name}-%{snapshot}.tar.gz
 Source1:	udhcpd.conf
 Source2:	udhcpd.init
